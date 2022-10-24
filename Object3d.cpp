@@ -25,6 +25,8 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE Object3d::cpuDescHandleSRV;
 CD3DX12_GPU_DESCRIPTOR_HANDLE Object3d::gpuDescHandleSRV;
 XMMATRIX Object3d::matView{};
 XMMATRIX Object3d::matProjection{};
+XMMATRIX Object3d::matBillboard = XMMatrixIdentity();
+XMMATRIX Object3d::matBillboardY = XMMatrixIdentity();
 XMFLOAT3 Object3d::eye = { 0, 0, -50.0f };
 XMFLOAT3 Object3d::target = { 0, 0, 0 };
 XMFLOAT3 Object3d::up = { 0, 1, 0 };
@@ -516,6 +518,31 @@ void Object3d::UpdateViewMatrix()
 
 	// 転置により逆転行列 (逆回転) を計算
 	matView = XMMatrixTranspose(matCameraRot);
+#pragma region 全方向ビルボード行列の計算
+	// ビルボード行列
+	matBillboard.r[0] = cameraAxisX;
+	matBillboard.r[1] = cameraAxisY;
+	matBillboard.r[2] = cameraAxisZ;
+	matBillboard.r[3] = XMVectorSet(0, 0, 0, 1);
+#pragma endregion
+#pragma region Y軸回りビルボード行列の計算
+	// カメラ X軸,Y軸,Z軸
+	XMVECTOR ybillCameraAxisX, ybillCameraAxisY, ybillCameraAxisZ;
+
+	// X軸は共通
+	ybillCameraAxisX = cameraAxisX;
+	// Y軸はワールド座標系のY軸
+	ybillCameraAxisY = XMVector3Normalize(upVector);
+	// Z軸はX軸->Y軸の外積で求まる
+	ybillCameraAxisZ = XMVector3Cross(cameraAxisZ, cameraAxisY);
+
+	// Y軸回りビルボード行列
+	matBillboardY.r[0] = ybillCameraAxisX;
+	matBillboardY.r[1] = ybillCameraAxisY;
+	matBillboardY.r[2] = ybillCameraAxisZ;
+	matBillboardY.r[3] = XMVectorSet(0, 0, 0, 1);
+#pragma endregion
+
 
 	// 視点座標に-1を掛けた座標
 	XMVECTOR reverseEyePosition = XMVectorNegate(eyePosition);
@@ -569,6 +596,7 @@ void Object3d::Update()
 
 	// ワールド行列の合成
 	matWorld = XMMatrixIdentity(); // 変形をリセット
+	matWorld *= matBillboardY; // ビルボード行列を掛ける
 	matWorld *= matScale; // ワールド行列にスケーリングを反映
 	matWorld *= matRot; // ワールド行列に回転を反映
 	matWorld *= matTrans; // ワールド行列に平行移動を反映
