@@ -509,6 +509,19 @@ void Object3d::UpdateViewMatrix()
 
 	// 転置により逆転行列 (逆回転) を計算
 	matView = XMMatrixTranspose(matCameraRot);
+
+	// 視点座標に-1を掛けた座標
+	XMVECTOR reverseEyePosition = XMVectorNegate(eyePosition);
+	// カメラの位置空ワールド原点へのベクトル (カメラ座標)
+	XMVECTOR tX = XMVector3Dot(matCameraRot.r[0], reverseEyePosition); // X成分
+	XMVECTOR tY = XMVector3Dot(matCameraRot.r[1], reverseEyePosition); // Y成分
+	XMVECTOR tZ = XMVector3Dot(matCameraRot.r[2], reverseEyePosition); // Z成分
+	// 一つのベクトルにまとめる
+	XMVECTOR translation = XMVectorSet(tX.m128_f32[0], tY.m128_f32[1], tZ.m128_f32[2], 1.0f);
+
+	// ビュー行列に平行移動成分を設定
+	matView.r[3] = translation;
+
 #pragma region 全方向ビルボード行列の計算
 	// ビルボード行列
 	matBillboard.r[0] = cameraAxisX;
@@ -534,18 +547,6 @@ void Object3d::UpdateViewMatrix()
 	matBillboardY.r[3] = XMVectorSet(0, 0, 0, 1);
 #pragma endregion
 
-
-	// 視点座標に-1を掛けた座標
-	XMVECTOR reverseEyePosition = XMVectorNegate(eyePosition);
-	// カメラの位置空ワールド原点へのベクトル (カメラ座標)
-	XMVECTOR tX = XMVector3Dot(matCameraRot.r[0], reverseEyePosition); // X成分
-	XMVECTOR tY = XMVector3Dot(matCameraRot.r[1], reverseEyePosition); // Y成分
-	XMVECTOR tZ = XMVector3Dot(matCameraRot.r[2], reverseEyePosition); // Z成分
-	// 一つのベクトルにまとめる
-	XMVECTOR translation = XMVectorSet(tX.m128_f32[0], tY.m128_f32[1], tZ.m128_f32[2], 1.0f);
-
-	// ビュー行列に平行移動成分を設定
-	matView.r[3] = translation;
 
 }
 
@@ -587,9 +588,12 @@ void Object3d::Update()
 
 	// ワールド行列の合成
 	matWorld = XMMatrixIdentity(); // 変形をリセット
-	//matWorld *= matBillboardY; // ビルボード行列を掛ける
+
+
 	matWorld *= matScale; // ワールド行列にスケーリングを反映
 	matWorld *= matRot; // ワールド行列に回転を反映
+
+	matWorld *= matBillboard; // ビルボード行列を掛ける
 	matWorld *= matTrans; // ワールド行列に平行移動を反映
 
 	// 親オブジェクトがあれば
@@ -602,7 +606,7 @@ void Object3d::Update()
 	ConstBufferData* constMap = nullptr;
 	result = constBuff->Map(0, nullptr, (void**)&constMap);
 	// 行列の合成
-	constMap->mat = matView * matProjection;	
+	constMap->mat = matWorld * matView * matProjection;	
 	constBuff->Unmap(0, nullptr);
 }
 
