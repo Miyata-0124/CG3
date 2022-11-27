@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "Input.h"
 
 #include <Windows.h>
 #include <wrl.h>
@@ -179,6 +180,7 @@ public: // メンバ関数
 	/// 毎フレーム処理
 	/// </summary>
 	void Update();
+	void Billbord();
 
 	/// <summary>
 	/// 描画
@@ -189,14 +191,17 @@ public: // メンバ関数
 	/// 座標の取得
 	/// </summary>
 	/// <returns>座標</returns>
-	const XMFLOAT3& GetPosition() const { return position; }
+	const XMFLOAT3& GetPosition() const { return position[0]; }
+	const XMFLOAT3& GetPosition2() const { return position[1]; }
 
 	/// <summary>
 	/// 座標の設定
 	/// </summary>
 	/// <param name="position">座標</param>
-	void SetPosition(const XMFLOAT3& position) { this->position = position; }
-
+	void SetPosition(const XMFLOAT3& position) { this->position[0] = position; }
+	void SetPosition2(const XMFLOAT3& position) { this->position[1] = position; }
+	
+	int GetVertexCount() { return vertexCount; }
 private: // メンバ変数
 	ComPtr<ID3D12Resource> constBuff; // 定数バッファ
 	// 色
@@ -206,7 +211,7 @@ private: // メンバ変数
 	// X,Y,Z軸回りのローカル回転角
 	XMFLOAT3 rotation = { 0,0,0 };
 	// ローカル座標
-	XMFLOAT3 position = { 0,0,0 };
+	XMFLOAT3 position[2] = { {2.0f,0,0},{-2.0f,0.0f,0.0f} };
 	// ローカルワールド変換行列
 	XMMATRIX matWorld;
 	// 親オブジェクト

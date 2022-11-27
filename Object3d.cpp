@@ -161,7 +161,7 @@ void Object3d::InitializeCamera(int window_width, int window_height)
 {
 	// ビュー行列の計算
 	UpdateViewMatrix();
-
+	
 	// 平行投影による射影行列の生成
 	//constMap->mat = XMMatrixOrthographicOffCenterLH(
 	//	0, window_width,
@@ -344,7 +344,7 @@ void Object3d::LoadTexture()
 	ScratchImage scratchImg{};
 
 	// WICテクスチャのロード
-	result = LoadFromWICFile( L"Resources/tex1.png", WIC_FLAGS_NONE, &metadata, scratchImg);
+	result = LoadFromWICFile( L"Resources/MK.png", WIC_FLAGS_NONE, &metadata, scratchImg);
 	assert(SUCCEEDED(result));
 
 	ScratchImage mipChain{};
@@ -415,7 +415,7 @@ void Object3d::CreateModel()
 	std::vector<VertexPos> realVertices;
 	//四角形の頂点データ
 	VertexPos verticesPoint[] = {
-		{{0.0f,0.0f,0.0f}}
+		{{-1.5f,0.0f,0.0f}},	// 0
 	};
 	//メンバ変数にコピー
 	std::copy(std::begin(verticesPoint), std::end(verticesPoint), vertices);
@@ -428,7 +428,7 @@ void Object3d::CreateModel()
 
 	// メンバ変数にコピー
 	/*std::copy(std::begin(indicesSquare), std::end(indicesSquare), indices);*/
-
+	
 	UINT sizeVB = static_cast<UINT>(sizeof(vertices));
 
 	// ヒーププロパティ
@@ -584,16 +584,15 @@ void Object3d::Update()
 	matRot *= XMMatrixRotationZ(XMConvertToRadians(rotation.z));
 	matRot *= XMMatrixRotationX(XMConvertToRadians(rotation.x));
 	matRot *= XMMatrixRotationY(XMConvertToRadians(rotation.y));
-	matTrans = XMMatrixTranslation(position.x, position.y, position.z);
+	matTrans = XMMatrixTranslation(position[0].x, position[0].y, position[0].z);
 
 	// ワールド行列の合成
 	matWorld = XMMatrixIdentity(); // 変形をリセット
 
+	matWorld *= matBillboard; // ビルボード行列を掛ける	
 
 	matWorld *= matScale; // ワールド行列にスケーリングを反映
 	matWorld *= matRot; // ワールド行列に回転を反映
-
-	matWorld *= matBillboard; // ビルボード行列を掛ける
 	matWorld *= matTrans; // ワールド行列に平行移動を反映
 
 	// 親オブジェクトがあれば
@@ -606,7 +605,43 @@ void Object3d::Update()
 	ConstBufferData* constMap = nullptr;
 	result = constBuff->Map(0, nullptr, (void**)&constMap);
 	// 行列の合成
-	constMap->mat = matWorld * matView * matProjection;	
+	constMap->mat = matWorld * matView * matProjection;
+	constBuff->Unmap(0, nullptr);
+}
+
+void Object3d::Billbord()
+{
+	HRESULT result;
+	XMMATRIX matScale, matRot, matTrans;
+
+	// スケール、回転、平行移動行列の計算
+	matScale = XMMatrixScaling(scale.x, scale.y, scale.z);
+	matRot = XMMatrixIdentity();
+	matRot *= XMMatrixRotationZ(XMConvertToRadians(rotation.z));
+	matRot *= XMMatrixRotationX(XMConvertToRadians(rotation.x));
+	matRot *= XMMatrixRotationY(XMConvertToRadians(rotation.y));
+	matTrans = XMMatrixTranslation(position[1].x, position[1].y, position[1].z);
+
+	// ワールド行列の合成
+	matWorld = XMMatrixIdentity(); // 変形をリセット
+
+	matWorld *= matBillboard; // ビルボード行列を掛ける	
+
+	matWorld *= matScale; // ワールド行列にスケーリングを反映
+	matWorld *= matRot; // ワールド行列に回転を反映
+	matWorld *= matTrans; // ワールド行列に平行移動を反映
+
+	// 親オブジェクトがあれば
+	if (parent != nullptr) {
+		// 親オブジェクトのワールド行列を掛ける
+		matWorld *= parent->matWorld;
+	}
+
+	// 定数バッファへデータ転送
+	ConstBufferData* constMap = nullptr;
+	result = constBuff->Map(0, nullptr, (void**)&constMap);
+	// 行列の合成
+	constMap->mat = matView * matProjection;
 	constBuff->Unmap(0, nullptr);
 }
 
